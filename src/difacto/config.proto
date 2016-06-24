@@ -28,7 +28,15 @@ message Config {
 
 
   // --  basic settings - objective and optimization  --
-
+  enum Algo {
+    /// asynchronous minibatch SGD
+    SGD = 1;
+    /// similar to SGD, but use adagrad
+    ADAGRAD = 2;
+    /// similar to ADAGRAD, but use FTRL for better sparsity
+    FTRL = 3;
+  }
+  optional Algo algo = 21 [default = FTRL];
   // - w -
 
   /// l1 regularizer for :math:`w`: :math:`\lambda_1 |w|_1`

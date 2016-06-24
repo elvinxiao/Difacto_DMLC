@@ -296,23 +296,42 @@ struct AdaGradHandle : public ISGDHandle {
   }
 };
 
+struct FTRLEntry{
+
+}
+
+struct FTRLHandle : public ISGDHandle{
+
+}
+
 class AsyncServer : public solver::MinibatchServer {
  public:
   AsyncServer(const Config& conf) : conf_(conf) {
-    using Server = ps::OnlineServer<float, AdaGradEntry, AdaGradHandle>;
-    AdaGradHandle h;
-    h.reporter = [this](const Progress& prog) { ReportToScheduler(prog.data); };
+    auto algo = conf_.algo();
+    if(algo == Config::ADAGRAD){
+	CreateServer<AdaGradEntry, AdaGradHandle>();	
+    } else if(algo == Config::FTRL){
+	CreateServer<FTRLEntry, FTRLHandle>();
+    } else{
+	LOG(FATAL)<<"unknown algo: "<<algo;
+    }
+  }
+  virtual ~AsyncServer() { };
 
+ protected:
+  template <typename Entry, typename Handle>
+  void CreateServer(){
+    Handle h;
     // for w
-    h.alpha     = conf.lr_eta();
-    h.beta      = conf.lr_beta();
-    h.lambda_l1 = conf.lambda_l1();
-    h.lambda_l2 = conf.lambda_l2();
-    h.l1_shrk   = conf.l1_shrk();
+    h.alpha     = conf_.lr_eta();
+    h.beta      = conf_.lr_beta();
+    h.lambda_l1 = conf_.lambda_l1();
+    h.lambda_l2 = conf_.lambda_l2();
+    h.l1_shrk   = conf_.l1_shrk();
 
     // for V
-    if (conf.embedding_size() > 0) {
-      const auto& c = conf.embedding(0);
+    if (conf_.embedding_size() > 0) {
+      const auto& c = conf_.embedding(0);
       h.V.dim       = c.dim();
       h.V.thr       = (unsigned)c.threshold();
       h.V.lambda_l2 = c.lambda_l2();
@@ -321,13 +340,12 @@ class AsyncServer : public solver::MinibatchServer {
       h.V.alpha     = c.has_lr_eta() ? c.lr_eta() : h.alpha;
       h.V.beta      = c.has_lr_beta() ? c.lr_beta() : h.beta;
     }
+    h.reporter = [this](const Progress& prog) { ReportToScheduler(prog.data); };
 
-    Server s(h);
+    ps::OnlineServer<float, AdaGradEntry, AdaGradHandle> s(h);
     server_ = s.server();
   }
 
-  virtual ~AsyncServer() { }
- protected:
   virtual void LoadModel(Stream* fi) {
     server_->Load(fi);
 
