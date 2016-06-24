@@ -8,52 +8,6 @@
 namespace dmlc {
 namespace difacto {
 
-/**
- * \brief the scheduler for async SGD
- */
-class AsyncScheduler : public solver::MinibatchScheduler {
- public:
-  AsyncScheduler(const Config& conf) : conf_(conf) {
-    if (conf_.early_stop()) {
-      CHECK(conf_.val_data().size()) << "early stop needs validation dataset";
-    }
-    Init(conf);
-  }
-  virtual ~AsyncScheduler() { }
-
-  virtual std::string ProgHeader() { return Progress::HeadStr(); }
-
-  virtual std::string ProgString(const solver::Progress& prog) {
-    prog_.data = prog;
-    return prog_.PrintStr();
-  }
-
-  virtual bool Stop(const Progress& cur, bool train) {
-    double cur_objv = cur.objv() / cur.new_ex();
-    if (train) {
-      if (conf_.has_max_objv() && cur_objv > conf_.max_objv()) {
-        return true;
-      }
-    } else {
-      double diff = pre_val_objv_ - cur_objv;
-      pre_val_objv_ = cur_objv;
-      if (conf_.early_stop() && diff < conf_.min_objv_decr()) {
-        std::cout << "The decrease of validation objective "
-                  << "is smaller than the minimal requirement: "
-                  << diff << " vs " << conf_.min_objv_decr()
-                  << std::endl;
-        return true;
-      }
-    }
-    return false;
-  }
-
- private:
-  Progress prog_;
-  Config conf_;
-  double pre_val_objv_ = 100;
-};
-
 using FeaID = ps::Key;
 template <typename T> using Blob = ps::Blob<T>;
 static const int kPushFeaCnt = 1;
@@ -470,6 +424,48 @@ class AsyncWorker : public solver::MinibatchWorker {
   ps::KVWorker<float> server_;
 };
 
+class AsyncScheduler : public solver::MinibatchScheduler {
+ public:
+  AsyncScheduler(const Config& conf) : conf_(conf) {
+    if (conf_.early_stop()) {
+      CHECK(conf_.val_data().size()) << "early stop needs validation dataset";
+    }
+    Init(conf);
+  }
+  virtual ~AsyncScheduler() { }
+
+  virtual std::string ProgHeader() { return Progress::HeadStr(); }
+
+  virtual std::string ProgString(const solver::Progress& prog) {
+    prog_.data = prog;
+    return prog_.PrintStr();
+  }
+
+  virtual bool Stop(const Progress& cur, bool train) {
+    double cur_objv = cur.objv() / cur.new_ex();
+    if (train) {
+      if (conf_.has_max_objv() && cur_objv > conf_.max_objv()) {
+        return true;
+      }
+    } else {
+      double diff = pre_val_objv_ - cur_objv;
+      pre_val_objv_ = cur_objv;
+      if (conf_.early_stop() && diff < conf_.min_objv_decr()) {
+        std::cout << "The decrease of validation objective "
+                  << "is smaller than the minimal requirement: "
+                  << diff << " vs " << conf_.min_objv_decr()
+                  << std::endl;
+        return true;
+      }
+    }
+    return false;
+  }
+
+ private:
+  Progress prog_;
+  Config conf_;
+  double pre_val_objv_ = 100;
+};
 
 }  // namespace difacto
 }  // namespace dmlc
