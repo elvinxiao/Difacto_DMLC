@@ -45,7 +45,7 @@ class AsyncScheduler : public solver::MinibatchScheduler {
   Progress prog_;
   Config conf_;
   double pre_val_objv_ = 100;
-};
+};//end AsyncScheduler
 
 using FeaID = ps::Key;
 template <typename T> using Blob = ps::Blob<T>;
@@ -112,7 +112,7 @@ struct ISGDHandle {
     int i_ = 0, disp_ = ps::NodeInfo::NumWorkers() * 10;
   } perf_;
   int ct_ = 0, ns_ = 0;
-};
+};//end ISGDHandle
 /**
  * \brief value stored on server nodes
  */
@@ -177,7 +177,7 @@ struct AdaGradEntry {
   float *w = NULL;
   /// square root of the cumulative gradient
   float *sqc_grad = NULL;
-};
+};//end AdaGradEntry
 /**
  * \brief model updater
  */
@@ -253,7 +253,7 @@ struct AdaGradHandle : public ISGDHandle {
       w[i] -= eta * grad;
     }
   }
-};
+};//end AdaGradHandle
 
 struct FTRLEntry{
     FTRLEntry() {}
@@ -277,18 +277,14 @@ struct FTRLEntry{
     }
     w = new_w; sqc_grad = new_cg; size = n;
   }
-
     inline float& w_0() { return size == 1 ? *(float *)&w : w[0]; }
     inline float w_0() const { return size == 1 ? *(float *)&w : w[0]; }
-
     inline float& sqc_grad_0() {
 	return size == 1 ? *(float *)&sqc_grad : sqc_grad[0];
     }
-
     inline float& z_0() {
 	return size == 1 ? *(((float *)&sqc_grad)+1) : sqc_grad[1];
     }
-
     inline void Load(Stream *fi){
 	fi->Read(&size, sizeof(size)) ;
         if (size == 1) {
@@ -319,7 +315,7 @@ struct FTRLEntry{
     int size = 1;
     float *w = 0;
     float *sqc_grad = NULL;
-};
+};//end FTRLEntry
 
 struct FTRLHandle : public ISGDHandle{
     public:
@@ -407,7 +403,7 @@ struct FTRLHandle : public ISGDHandle{
         }
     }
 
-};
+};//end FTRLHandle
 
 class AsyncServer : public solver::MinibatchServer {
  public:
@@ -461,7 +457,7 @@ class AsyncServer : public solver::MinibatchServer {
   }
   ps::KVStore* server_;
   Config conf_;
-};
+};//end AsyncServer
 
 class AsyncWorker : public solver::MinibatchWorker {
  public:
@@ -567,7 +563,7 @@ class AsyncWorker : public solver::MinibatchWorker {
   Config conf_;
   bool do_embedding_ = false;
   ps::KVWorker<float> server_;
-};
+};//end AsyncWorker
 
 }  // namespace difacto
 }  // namespace dmlc
