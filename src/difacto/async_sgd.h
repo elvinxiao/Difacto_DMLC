@@ -4,6 +4,7 @@
 #include "loss.h"
 #include "base/localizer.h"
 #include "solver/minibatch_solver.h"
+#include <iostream>
 
 namespace dmlc {
 namespace difacto {
@@ -328,7 +329,7 @@ struct FTRLHandle : public ISGDHandle{
                  CHECK_GE(recv.size, (size_t)0);
       		 UpdateW(val, recv[0]);
      		 if (recv.size > 1) {
-       		     UpdateV(val.w+1, val.sqc_grad+2, recv.data+1, recv.size-1);
+       		     UpdateV(val, val.w+1, val.sqc_grad+2, recv.data+1, recv.size-1);
       		 }
        	     }
         }
@@ -359,18 +360,14 @@ struct FTRLHandle : public ISGDHandle{
       new_V += val.size - old_siz;
     }
   }
-
   // ftrl
   inline void UpdateW(FTRLEntry& val, float g) {
     float w = val.w_0();
     g += lambda_l2 * w;
-
     float cg = val.sqc_grad_0();
     float cg_new = sqrt( cg * cg + g * g );
     val.sqc_grad_0() = cg_new;
-
     val.z_0() -= g - (cg_new - cg) / alpha * w;
-
     float z = val.z_0();
     float l1 = lambda_l1;
     if (z <= l1  && z >= - l1) {
@@ -379,27 +376,31 @@ struct FTRLHandle : public ISGDHandle{
       float eta = (beta + cg_new) / alpha;
       val.w_0() = (z > 0 ? z - l1 : z + l1) / eta;
     }
-
     if (w == 0 && val.w_0() != 0) {
       ++ new_w; Resize(val);
     } else if (w != 0 && val.w_0() == 0) {
       -- new_w;
     }
   }
-  
-    inline void UpdateV(float* w, float* cg, float const* g, int n) {
+    inline void UpdateV(FTRLEntry& val, float* w, float* cg, float const* g, int n) {
 	float* cg_new = new float[n];
         for (int i = 0; i < n; ++i) {
             cg_new[i] = sqrt(cg[i] * cg[i] + g[i] * g[i]);
-	    float z = g[i] - (cg_new[i] - cg[i]) / alpha*w[i];
+	    val.sqc_grad_0() = cg_new[i];
+ 	    val.z_0() -= g[i] - (cg_new[i] - cg[i]) / alpha * w[i];
+	    float z = val.z_0();
 	    float l1 = V.lambda_l1;
 	    if(z <= l1 && z >= -l1){
-		w[i] = 0;
+		val.w_0() = 0;
 	    }else{
-                float eta = (V.beta + cg[i]) / V.alpha;
-		w[i] = (z > 0 ? z - l1 : z + l1) / eta;
+                float eta = (V.beta + cg_new[i]) / V.alpha;
+		val.w_0() = (z > 0 ? z - l1 : z + l1) / eta;
 	    }
-	    cg[i] = cg_new[i];
+            if (w == 0 && val.w_0() != 0) {
+                ++ new_w; Resize(val);
+            } else if (w != 0 && val.w_0() == 0) {
+                -- new_w;
+            }
         }
     }
 
@@ -435,6 +436,7 @@ class AsyncServer : public solver::MinibatchServer {
       h.V.dim       = c.dim();
       h.V.thr       = (unsigned)c.threshold();
       h.V.lambda_l2 = c.lambda_l2();
+      h.V.lambda_l1 = c.lambda_l1();
       h.V.V_min     = - c.init_scale();
       h.V.V_max     = c.init_scale();
       h.V.alpha     = c.has_lr_eta() ? c.lr_eta() : h.alpha;

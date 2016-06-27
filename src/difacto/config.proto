@@ -62,7 +62,8 @@ message Config {
 
     /// l2 regularizer for :math:`V`: :math:`\lambda_2 \|V_i\|_2^2`
     optional float lambda_l2 = 3;
-
+    
+    optional float lambda_l1 = 10 [default = 0.6];
     /// -- learning --
 
     /// learning rate :math:`\eta` for :math:`V`. if not specified, then share the same with :math:`w`
@@ -97,7 +98,7 @@ message Config {
   optional int32 minibatch = 22 [default = 1000];
 
   /// the maximal number of data passes
-  optional int32 max_data_pass= 23 [default = 10];
+  optional int32 max_data_pass= 23 [default = 5];
 
   /// stop earilier based on validation
   optional bool early_stop = 24 [default = false];
